@@ -1,31 +1,781 @@
-# Built things
-_Debug/
-Compiled/
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Checker</title>
 
-# AudioCache can be rebuilt from sources
-AudioCache/
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-# Lockfile
-_OpenInEditor.lock
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #100719;
+            color: white;
+            padding: 20px;
+        }
 
-# User settings
-Game.agf.user
-*.crm.user
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: auto;
+        }
 
-# Backups
-Game.agf.bak
-backup_acsprset.spr
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            color: #e8b6ff;
+        }
 
-# Memory dumps
-*.dmp
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
 
-# Temporary files
-# temporarily created during sprite or room background compression
-~aclzw.tmp
-# temporary, main game data, before getting packed into exe
-game28.dta
-# temporary build of the game before being moved to Compiled/ folder
-*.exe
+        .box {
+            background: #1b0d29;
+            border: 1px solid #6d3b91;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 18px;
+        }
 
-# Log files
-warnings.log
+        textarea {
+            width: 100%;
+            min-height: 130px;
+            resize: vertical;
+            border: 1px solid #7743a0;
+            outline: none;
+            border-radius: 12px;
+            background: #0f0716;
+            color: white;
+            padding: 14px;
+            font-size: 15px;
+        }
+
+        textarea:focus {
+            border-color: #c679ff;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 18px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            background: #7c35b8;
+        }
+
+        button:hover {
+            background: #9148ce;
+        }
+
+        button.stop {
+            background: #9b3048;
+        }
+
+        .info {
+            margin-top: 12px;
+            color: #bbb;
+            font-size: 14px;
+        }
+
+        #results {
+            display: grid;
+            gap: 12px;
+        }
+
+        .card {
+            background: #1a0c27;
+            border: 1px solid #542d70;
+            border-radius: 14px;
+            padding: 15px;
+        }
+
+        .top {
+            display: flex;
+            align-items: center;
+            gap: 13px;
+        }
+
+        .avatar {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #251333;
+        }
+
+        .name {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .username {
+            color: #b78acb;
+            margin-top: 3px;
+        }
+
+        .status {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .online {
+            background: #164d2a;
+            color: #75ff9d;
+        }
+
+        .offline {
+            background: #3c2630;
+            color: #ff9eaf;
+        }
+
+        .game {
+            background: #432a61;
+            color: #e3b8ff;
+        }
+
+        .studio {
+            background: #5a4720;
+            color: #ffd978;
+        }
+
+        .banned {
+            color: #ff6b7f;
+            font-weight: bold;
+        }
+
+        .not-banned {
+            color: #75ff9d;
+            font-weight: bold;
+        }
+
+        .details {
+            margin-top: 12px;
+            line-height: 1.7;
+            color: #ddd;
+            font-size: 14px;
+        }
+
+        .details b {
+            color: #c58ee8;
+        }
+
+        .footer {
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            margin-top: 18px;
+        }
+
+        .loading {
+            color: #cda2e7;
+        }
+
+        .error {
+            color: #ff7b8d;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>HOAI ROBLOX CHECKER</h1>
+
+    <div class="subtitle">
+        Auto check Roblox account
+    </div>
+
+    <div class="box">
+
+        <textarea
+            id="accounts"
+            placeholder="Nhập username hoặc User ID&#10;Mỗi tài khoản 1 dòng&#10;&#10;Ví dụ:&#10;Builderman&#10;156&#10;1"
+        ></textarea>
+
+        <div class="buttons">
+            <button onclick="startChecking()">
+                CHECK
+            </button>
+
+            <button class="stop" onclick="stopChecking()">
+                STOP
+            </button>
+        </div>
+
+        <div class="info" id="autoStatus">
+            Auto check: Chưa chạy
+        </div>
+
+    </div>
+
+    <div id="results"></div>
+
+    <div class="footer">
+        Tự động cập nhật mỗi 15 giây
+    </div>
+
+</div>
+
+<script>
+
+const CHECK_INTERVAL = 15000;
+
+let timer = null;
+
+
+/* ================================
+   LẤY USER ID TỪ USERNAME
+================================ */
+
+async function usernameToUser(username) {
+
+    const response = await fetch(
+        "https://users.roblox.com/v1/usernames/users",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                usernames: [username],
+                excludeBannedUsers: false
+            })
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Không thể tìm username");
+    }
+
+    const data = await response.json();
+
+    if (!data.data || data.data.length === 0) {
+        throw new Error("Không tìm thấy tài khoản");
+    }
+
+    return data.data[0];
+}
+
+
+/* ================================
+   LẤY THÔNG TIN USER
+================================ */
+
+async function getUser(userId) {
+
+    const response = await fetch(
+        `https://users.roblox.com/v1/users/${userId}`
+    );
+
+    if (!response.ok) {
+        throw new Error("Không lấy được thông tin user");
+    }
+
+    return await response.json();
+}
+
+
+/* ================================
+   LẤY PRESENCE
+================================ */
+
+async function getPresence(userId) {
+
+    const response = await fetch(
+        "https://presence.roblox.com/v1/presence/users",
+        {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                userIds: [Number(userId)]
+            })
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Không lấy được presence");
+    }
+
+    const data = await response.json();
+
+    if (!data.userPresences || data.userPresences.length === 0) {
+        return null;
+    }
+
+    return data.userPresences[0];
+}
+
+
+/* ================================
+   LẤY AVATAR
+================================ */
+
+async function getAvatar(userId) {
+
+    const response = await fetch(
+        `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=true`
+    );
+
+    if (!response.ok) {
+        return "";
+    }
+
+    const data = await response.json();
+
+    if (
+        data.data &&
+        data.data.length > 0
+    ) {
+        return data.data[0].imageUrl;
+    }
+
+    return "";
+}
+
+
+/* ================================
+   LẤY TÊN GAME
+================================ */
+
+async function getGameName(universeId) {
+
+    if (!universeId) {
+        return "Không xác định";
+    }
+
+    try {
+
+        const response = await fetch(
+            `https://games.roblox.com/v1/games?universeIds=${universeId}`
+        );
+
+        if (!response.ok) {
+            return "Không xác định";
+        }
+
+        const data = await response.json();
+
+        if (
+            data.data &&
+            data.data.length > 0
+        ) {
+            return data.data[0].name;
+        }
+
+    } catch (error) {
+        console.log(error);
+    }
+
+    return "Không xác định";
+}
+
+
+/* ================================
+   CHECK 1 ACCOUNT
+================================ */
+
+async function checkAccount(input) {
+
+    input = input.trim();
+
+    if (!input) {
+        return;
+    }
+
+    let userInfo;
+
+    try {
+
+        /*
+         * Nếu nhập số -> coi là User ID
+         */
+        if (/^\d+$/.test(input)) {
+
+            userInfo = await getUser(input);
+
+        } else {
+
+            /*
+             * Nếu nhập chữ -> username
+             */
+            const result = await usernameToUser(input);
+
+            userInfo = await getUser(result.id);
+        }
+
+    } catch (error) {
+
+        addErrorCard(
+            input,
+            error.message
+        );
+
+        return;
+    }
+
+
+    let presence = null;
+    let avatar = "";
+    let gameName = "Không xác định";
+
+
+    try {
+        presence = await getPresence(userInfo.id);
+    } catch (error) {
+        console.log(error);
+    }
+
+
+    try {
+        avatar = await getAvatar(userInfo.id);
+    } catch (error) {
+        console.log(error);
+    }
+
+
+    /*
+     * Presence type:
+     *
+     * 0 = Offline
+     * 1 = Online
+     * 2 = In Game
+     * 3 = Roblox Studio
+     */
+
+    let statusText = "OFFLINE";
+    let statusClass = "offline";
+
+    if (presence) {
+
+        if (presence.userPresenceType === 1) {
+
+            statusText = "ONLINE";
+            statusClass = "online";
+
+        } else if (presence.userPresenceType === 2) {
+
+            statusText = "IN GAME";
+            statusClass = "game";
+
+        } else if (presence.userPresenceType === 3) {
+
+            statusText = "ROBLOX STUDIO";
+            statusClass = "studio";
+
+        }
+
+    }
+
+
+    /*
+     * Nếu đang chơi game
+     * thì lấy tên game
+     */
+
+    if (
+        presence &&
+        presence.userPresenceType === 2 &&
+        presence.universeId
+    ) {
+
+        gameName =
+            await getGameName(
+                presence.universeId
+            );
+    }
+
+
+    /*
+     * Banned bởi Roblox
+     */
+
+    let bannedText = "";
+
+    if (userInfo.isBanned === true) {
+
+        bannedText =
+            `<span class="banned">YES — BỊ BAN</span>`;
+
+    } else {
+
+        bannedText =
+            `<span class="not-banned">NO — KHÔNG BỊ BAN</span>`;
+    }
+
+
+    /*
+     * Tạo card
+     */
+
+    const card = document.createElement("div");
+
+    card.className = "card";
+
+    card.dataset.userid = userInfo.id;
+
+
+    card.innerHTML = `
+
+        <div class="top">
+
+            <img
+                class="avatar"
+                src="${avatar}"
+                onerror="this.style.display='none'"
+            >
+
+            <div>
+
+                <div class="name">
+                    ${escapeHTML(userInfo.displayName || userInfo.name)}
+                </div>
+
+                <div class="username">
+                    @${escapeHTML(userInfo.name)}
+                </div>
+
+                <div class="status ${statusClass}">
+                    ${statusText}
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="details">
+
+            <div>
+                <b>User ID:</b>
+                ${userInfo.id}
+            </div>
+
+            <div>
+                <b>Username:</b>
+                ${escapeHTML(userInfo.name)}
+            </div>
+
+            <div>
+                <b>Display Name:</b>
+                ${escapeHTML(userInfo.displayName)}
+            </div>
+
+            <div>
+                <b>Roblox Ban:</b>
+                ${bannedText}
+            </div>
+
+            <div>
+                <b>Game:</b>
+                ${escapeHTML(gameName)}
+            </div>
+
+            <div>
+                <b>Place ID:</b>
+                ${presence && presence.placeId ? presence.placeId : "Không có"}
+            </div>
+
+        </div>
+
+    `;
+
+
+    /*
+     * Nếu card cũ của user tồn tại
+     * thì thay card cũ
+     */
+
+    const oldCard =
+        document.querySelector(
+            `.card[data-userid="${userInfo.id}"]`
+        );
+
+    if (oldCard) {
+
+        oldCard.replaceWith(card);
+
+    } else {
+
+        document
+            .getElementById("results")
+            .appendChild(card);
+    }
+
+}
+
+
+/* ================================
+   CHECK TẤT CẢ
+================================ */
+
+async function checkAll() {
+
+    const text =
+        document.getElementById("accounts").value;
+
+    const accounts =
+        text
+            .split("\n")
+            .map(x => x.trim())
+            .filter(x => x.length > 0);
+
+
+    if (accounts.length === 0) {
+
+        document.getElementById("autoStatus").innerText =
+            "Chưa nhập tài khoản.";
+
+        return;
+    }
+
+
+    document.getElementById("autoStatus").innerText =
+        `Đang check ${accounts.length} tài khoản...`;
+
+
+    /*
+     * Check lần lượt để tránh
+     * gửi quá nhiều request cùng lúc
+     */
+
+    for (const account of accounts) {
+
+        await checkAccount(account);
+
+        await sleep(300);
+    }
+
+
+    const now =
+        new Date().toLocaleTimeString();
+
+    document.getElementById("autoStatus").innerText =
+        `Đã cập nhật lúc ${now} • Tự động check mỗi ${CHECK_INTERVAL / 1000}s`;
+}
+
+
+/* ================================
+   START AUTO CHECK
+================================ */
+
+function startChecking() {
+
+    stopChecking();
+
+    checkAll();
+
+    timer = setInterval(
+        checkAll,
+        CHECK_INTERVAL
+    );
+
+}
+
+
+/* ================================
+   STOP AUTO CHECK
+================================ */
+
+function stopChecking() {
+
+    if (timer) {
+
+        clearInterval(timer);
+
+        timer = null;
+    }
+
+    document.getElementById("autoStatus").innerText =
+        "Auto check: Đã dừng.";
+}
+
+
+/* ================================
+   DELAY
+================================ */
+
+function sleep(ms) {
+
+    return new Promise(
+        resolve => setTimeout(resolve, ms)
+    );
+
+}
+
+
+/* ================================
+   ESCAPE HTML
+================================ */
+
+function escapeHTML(text) {
+
+    return String(text ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+}
+
+
+/* ================================
+   ERROR CARD
+================================ */
+
+function addErrorCard(input, message) {
+
+    const card =
+        document.createElement("div");
+
+    card.className = "card";
+
+    card.innerHTML = `
+
+        <div class="name">
+            ${escapeHTML(input)}
+        </div>
+
+        <div class="details error">
+            ❌ ${escapeHTML(message)}
+        </div>
+
+    `;
+
+    document
+        .getElementById("results")
+        .appendChild(card);
+
+}
+
+</script>
+
+</body>
+  </html>
